@@ -73,12 +73,11 @@ namespace VT0
             private static readonly Dictionary<ValueTuple<int, int, TextureFormat>, Texture2D> _staging
                 = new Dictionary<ValueTuple<int, int, TextureFormat>, Texture2D>();
 
-            public void Load(Texture2D[] targets, Vector2 position, int size, VTOutput output)
+            public void Load(Texture2DArray[] targets, Vector2 position, int size, VTOutput output)
             {
                 var channels = VT0Info.Current.Channels;
                 var outSize = output.Size;
                 int srcMipBias = outSize - size;
-                var vtSize = VT0Info.Current.VTSize;
                 for (int i = 0; i < channels.Count; i++)
                 {
                     var props = _channelProperties[channels[i]];
@@ -94,9 +93,11 @@ namespace VT0
                     }
                     // TODO: Only stage the mips we need
                     staging.LoadRawTextureData(data.Data);
-                    var intPos = Vector2Int.FloorToInt(position * vtSize);
+                    var intPos = Vector2Int.FloorToInt(
+                        Vector2.Scale(position, new Vector2(target.width, target.height)));
 
-                    for (int m = 0; m < target.mipmapCount; m++)
+                    var mipCount = (int)Mathf.Log(Mathf.Min(target.width, target.height), 2);
+                    for (int m = 0; m < mipCount; m++)
                     {
                         Graphics.CopyTexture(
                             staging, 0, m + srcMipBias, 0, 0, data.Width, data.Height,
@@ -131,21 +132,22 @@ namespace VT0
             }
         }
 
-        private Texture2D[] _textures;
+        private Texture2DArray[] _textures;
 
         private void Setup()
         {
             var channels = VT0Info.Current.Channels;
             var vtSize = VT0Info.Current.VTSize;
             Array.Resize(ref _textures, channels.Count);
-            //var mipMapCount = (int)Mathf.Log(TextureSize / Info.ThumbSize, 2) - 1;
-            for (int i = 0; i < _textures.Length; i++)
+            for (int i = 0; i < channels.Count; i++)
             {
-                if (_textures[i] == null || _textures[i].width != vtSize)
+                if (_textures[i] == null ||
+                    _textures[i].width != vtSize ||
+                    _textures[i].depth != channels[i].Count)
                 {
                     Destroy(_textures[i]);
-                    _textures[i] = new Texture2D(vtSize, vtSize,
-                        channels[i].Format, false, false);
+                    _textures[i] = new Texture2DArray(vtSize, vtSize, channels[i].Count,
+                        channels[i].Format, true);
                 }
             }
         }

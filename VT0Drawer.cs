@@ -56,7 +56,7 @@ namespace VT0
 
         private bool IsVT0Enabled(Material m)
         {
-            return m.IsKeywordEnabled("_VT0ENABLE_ON");
+            return m.IsKeywordEnabled("_VT0_ON");
         }
 
         private static readonly TwoWayDictionary<Texture2D, Texture2D> _placeholderCache

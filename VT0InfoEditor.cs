@@ -72,7 +72,7 @@ namespace VT0
                 var removeChannel = Button("x", Width(20f));
                 EndHorizontal();
 
-                E.PropertyField(channel.FindPropertyRelative(nameof(VT0Channel.Size)));
+                E.PropertyField(channel.FindPropertyRelative(nameof(VT0Channel.Count)));
 
                 BeginHorizontal();
                 Label("Format");

@@ -17,7 +17,7 @@ namespace VT0
 
         public TextureFormat Format;
 
-        [TextureSize] public int Size = 16384;
+        public int Count = 1;
 
         public bool IsTextureValid(Texture tex, out string why)
         {
@@ -72,8 +72,8 @@ namespace VT0
             return Channels.Sum(c => {
                 var fmt = TextureFormatInfo.FromFormatID(c.Format);
                 if (fmt == null) return 0;
-                return (4.0f/3.0f) *
-                    (((float)c.Size*c.Size + materialCount*(float)ThumbSize*ThumbSize)
+                return c.Count * (4.0f/3.0f) *
+                    (((float)VTSize*VTSize + materialCount*(float)ThumbSize*ThumbSize)
                     * fmt.Value.BlockDataSize)
                     /(fmt.Value.BlockPixelCount*fmt.Value.BlockPixelCount);
             });
