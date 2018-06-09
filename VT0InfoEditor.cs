@@ -8,9 +8,59 @@ namespace VT0
     [CustomEditor(typeof(VT0Info))]
     public class VT0InfoEditor : Editor
     {
+        [MenuItem("VT0/Settings")]
+        public static void Show()
+        {
+            Selection.activeObject = VT0Info.Current;
+        }
+
+        public static void UpdateChannelFile()
+        {
+            VT0Info.Current.UpdateChannelFile(System.IO.File.Create("Assets/VT0/VT0_channels.cginc"));
+            AssetDatabase.Refresh();
+        }
+
         public override void OnInspectorGUI()
         {
             serializedObject.UpdateIfRequiredOrScript();
+
+            Label("General", EditorStyles.boldLabel);
+            E.PropertyField(serializedObject.FindProperty(nameof(VT0Info.ThumbSize)));
+            E.PropertyField(serializedObject.FindProperty(nameof(VT0Info.MemoryCompression)));
+
+            var vramBytes = ((VT0Info)target).EstimateVRAM(100);
+            string specifier = "B";
+            if (vramBytes > (1 << 30)) {
+                vramBytes /= (1 << 30);
+                specifier = "GiB";
+            } else if (vramBytes > (1 << 20)) {
+                vramBytes /= (1 << 20);
+                specifier = "MiB";
+            } else if (vramBytes > (1 << 10)) {
+                vramBytes /= (1 << 10);
+                specifier = "KiB";
+            }
+
+            E.HelpBox(
+                $"This configuration uses approximately {vramBytes:F1} {specifier} of VRAM",
+                MessageType.Info);
+            
+            BeginHorizontal();
+            if (serializedObject.FindProperty(nameof(VT0Info.Modified)).boolValue) 
+            {
+                GUI.color = Color.red;
+                E.HelpBox("Settings were modified; apply changes before running", MessageType.None);
+                GUI.color = Color.white;
+            } else {
+                E.HelpBox("No modifications", MessageType.None);
+            }
+            if (Button("Apply", ExpandWidth(false))) {
+                UpdateChannelFile();
+                serializedObject.FindProperty(nameof(VT0Info.Modified)).boolValue = false;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            }
+            EndHorizontal();
+
             var channels = serializedObject.FindProperty(nameof(VT0Info.Channels));
 
             for (int j = 0; j < channels.arraySize; j++)
@@ -18,9 +68,11 @@ namespace VT0
                 var channel = channels.GetArrayElementAtIndex(j);
                 BeginVertical("HelpBox");
                 BeginHorizontal();
-                Label("VT0 Channel", EditorStyles.largeLabel);
+                Label("Channel", EditorStyles.boldLabel);
                 var removeChannel = Button("x", Width(20f));
                 EndHorizontal();
+
+                E.PropertyField(channel.FindPropertyRelative(nameof(VT0Channel.Size)));
 
                 BeginHorizontal();
                 Label("Format");
@@ -73,7 +125,10 @@ namespace VT0
             FlexibleSpace();
             EndHorizontal();
 
-            serializedObject.ApplyModifiedProperties();
+            if (serializedObject.ApplyModifiedProperties()) {
+                serializedObject.FindProperty(nameof(VT0Info.Modified)).boolValue = true;
+                serializedObject.ApplyModifiedPropertiesWithoutUndo();
+            }
         }
     }
 }

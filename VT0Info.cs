@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ConditionalAttribute = System.Diagnostics.ConditionalAttribute;
 
 namespace VT0
 {
@@ -15,6 +16,8 @@ namespace VT0
         public List<string> TextureNames = new List<string>();
 
         public TextureFormat Format;
+
+        [TextureSize] public int Size = 16384;
 
         public bool IsTextureValid(Texture tex, out string why)
         {
@@ -43,6 +46,12 @@ namespace VT0
         }
     }
 
+    public enum MemoryCompression
+    {
+        None,
+        LZ4
+    }
+
     public class VT0Info : ScriptableObject
     {
         public List<VT0Channel> Channels = new List<VT0Channel>
@@ -54,21 +63,22 @@ namespace VT0
 
         [TextureSize] public int VTSize = 16384;
         [TextureSize] public int ThumbSize = 64;
+        public MemoryCompression MemoryCompression;
+        public bool Modified;
 
         public float EstimateVRAM(int materialCount)
         {
+            checked {
             return Channels.Sum(c => {
                 var fmt = TextureFormatInfo.FromFormatID(c.Format);
                 if (fmt == null) return 0;
                 return (4.0f/3.0f) *
-                    (((float)VTSize*VTSize + materialCount*ThumbSize*ThumbSize)
+                    (((float)c.Size*c.Size + materialCount*(float)ThumbSize*ThumbSize)
                     * fmt.Value.BlockDataSize)
                     /(fmt.Value.BlockPixelCount*fmt.Value.BlockPixelCount);
             });
+            }
         }
-
-        public class EstimateVRAMAttribute : PropertyAttribute { }
-        [EstimateVRAM] private Empty _editorMarker0;
 
         private static VT0Info _current;
         public static VT0Info Current {
@@ -81,13 +91,34 @@ namespace VT0
             }
         }
 
-        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        [Conditional("UNITY_EDITOR")]
         private static void Create(ref VT0Info obj)
         {
             if (obj == null) {
                 System.IO.Directory.CreateDirectory("Assets/Resources");
                 UnityEditor.AssetDatabase.CreateAsset(
                     obj = CreateInstance<VT0Info>(), "Assets/Resources/VT0Info.asset");
+            }
+        }
+
+        [Conditional("UNITY_EDITOR")]
+        public void UpdateChannelFile(System.IO.Stream output)
+        {
+            var re = new System.Text.RegularExpressions.Regex(@"^[_a-zA-Z]\w*$");
+            using (var sw = new System.IO.StreamWriter(output))
+            {
+                sw.WriteLine("// This file is auto-generated; any modifications will be lost");
+                foreach (var c in Channels)
+                {
+                    foreach (var t in c.TextureNames)
+                    {
+                        if (!re.IsMatch(t)) {
+                            Debug.LogError($"Property name `{t}` is invalid", this);
+                        } else {
+                            sw.WriteLine($"VT0_def({t})");
+                        }
+                    }
+                }
             }
         }
     }
