@@ -1,3 +1,5 @@
+# Please note that this repo is very much WIP and basically doesn't work yet!
+
 # VT0
 **V**irtual **T**exturing with **Zero** Effort (for Unity)
 
